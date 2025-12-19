@@ -87,20 +87,21 @@ export const GameOverlay: React.FC<GameOverlayProps> = ({
         />
 
         {/* HUD: Unified Menu Button (Top Left) */}
+        {/* Moved down to top-6 left-4 to avoid safe areas/status bars */}
         <div 
-          className="absolute top-4 left-4 pointer-events-auto cursor-pointer z-[60] transform hover:scale-105 transition-transform"
+          className="absolute top-6 left-4 pointer-events-auto cursor-pointer z-[60] transform hover:scale-105 transition-transform"
           onClick={onOpenMenu}
         >
           {/* Roblox Logo Shape */}
-          <div className="w-9 h-9 md:w-10 md:h-10 bg-[#232527]/90 backdrop-blur-md rounded-lg border border-white/20 flex items-center justify-center shadow-lg active:scale-95 transition-all">
-             <div className="w-4 h-4 md:w-5 md:h-5 bg-white rounded-[2px] md:rounded-[4px] transform rotate-[12deg] border-[2px] md:border-[2.5px] border-white flex items-center justify-center">
-                 <div className="w-1.5 h-1.5 md:w-2 md:h-2 bg-[#232527] rounded-[0.5px] md:rounded-[1px]"></div>
+          <div className="w-10 h-10 md:w-11 md:h-11 bg-[#232527]/90 backdrop-blur-md rounded-lg border border-white/20 flex items-center justify-center shadow-lg active:scale-95 transition-all">
+             <div className="w-5 h-5 md:w-6 md:h-6 bg-white rounded-[2px] md:rounded-[4px] transform rotate-[12deg] border-[2px] md:border-[2.5px] border-white flex items-center justify-center">
+                 <div className="w-2 h-2 md:w-2.5 md:h-2.5 bg-[#232527] rounded-[0.5px] md:rounded-[1px]"></div>
              </div>
           </div>
         </div>
 
         {/* Leaderboard - Top Right */}
-        <div className="absolute top-4 right-4 w-32 md:w-40 bg-black/40 text-white rounded-lg p-2 md:p-3 text-[10px] md:text-xs backdrop-blur-sm z-45 pointer-events-auto">
+        <div className="absolute top-6 right-4 w-32 md:w-40 bg-black/40 text-white rounded-lg p-2 md:p-3 text-[10px] md:text-xs backdrop-blur-sm z-45 pointer-events-auto">
           <div className="font-bold border-b border-white/20 pb-1 mb-1">Leaderboard</div>
           <div className="space-y-1">
              {/* Show top 3 players in HUD */}
