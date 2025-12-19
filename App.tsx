@@ -9,7 +9,7 @@ import { LoadingScreen } from './components/LoadingScreen';
 import { AvatarEditor } from './components/AvatarEditor';
 import { ProfilePage } from './components/ProfilePage';
 import { db, auth } from './firebase';
-import { ref, set, onValue, push, onDisconnect, query, limitToLast, orderByChild } from 'firebase/database';
+import { ref, set, onValue, push, onDisconnect, query, limitToLast, orderByChild, update } from 'firebase/database';
 import { onAuthStateChanged } from 'firebase/auth';
 
 function App() {
@@ -115,9 +115,18 @@ function App() {
                   displayName: '@' + data[key].username,
                   appearance: data[key].appearance || { skin: '#ffcd38', shirt: '#999', pants: '#333' },
                   level: data[key].level || 1,
-                  isLocal: key === userId
+                  isLocal: key === userId,
+                  position: data[key].position,
+                  rotation: data[key].rotation,
+                  online: data[key].online
               }));
               setPlayers(playerList);
+              
+              // Forward remote players to engine for rendering
+              if (engineRef.current) {
+                  engineRef.current.updateRemotePlayers(playerList);
+              }
+
           } else {
               setPlayers([]);
           }
@@ -168,9 +177,18 @@ function App() {
     if (gameState === 'PLAYING' && canvasRef.current && !engineRef.current) {
       engineRef.current = new ThreeEngine(
           canvasRef.current, 
-          username, // PASS USERNAME HERE
+          userId, // Pass User ID to identify self
+          username, 
           () => setPaused(true),
-          () => setVictory(true)
+          () => setVictory(true),
+          // Position Update Callback (Called by engine every ~100ms)
+          (pos, rot) => {
+              if (!userId) return;
+              update(ref(db, `players/${userId}`), {
+                  position: pos,
+                  rotation: rot
+              }).catch(e => console.error("Pos sync fail", e));
+          }
       );
       // Set initial appearance
       engineRef.current.setAppearance(appearance);
@@ -179,6 +197,11 @@ function App() {
       // Load the level immediately upon engine creation
       if (activeLevel) {
           engineRef.current.loadLevel(activeLevel);
+      }
+
+      // Sync initial list immediately
+      if (players.length > 0) {
+          engineRef.current.updateRemotePlayers(players);
       }
 
       // Only attach pointer lock logic if NOT mobile

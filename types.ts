@@ -22,6 +22,10 @@ export interface Player {
   appearance: PlayerAppearance;
   level: number;
   isLocal: boolean;
+  online?: boolean;
+  // Multiplayer sync data
+  position?: { x: number, y: number, z: number };
+  rotation?: number; // Y rotation
 }
 
 export type LevelType = 'rainbow' | 'glass' | 'space' | 'lava';

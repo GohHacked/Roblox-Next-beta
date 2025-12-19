@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { LevelType, GameSettings, PlayerAppearance } from '../types';
+import { LevelType, GameSettings, PlayerAppearance, Player } from '../types';
 
 export class ThreeEngine {
   private scene: THREE.Scene;
@@ -15,7 +15,13 @@ export class ThreeEngine {
   private parts: { [key: string]: THREE.Group } = {};
   private platforms: THREE.Mesh[] = [];
 
-  // Materials for Player (Dynamic)
+  // Multiplayer
+  private userId: string;
+  private remotePlayers: Map<string, THREE.Group> = new Map();
+  private lastPositionEmitTime = 0;
+  private onPositionUpdate: (pos: {x: number, y: number, z: number}, rot: number) => void;
+
+  // Materials for Local Player
   private materials = {
       skin: new THREE.MeshLambertMaterial({ color: 0xffcd38 }),
       shirt: new THREE.MeshLambertMaterial({ color: 0x0088ff }),
@@ -50,11 +56,20 @@ export class ThreeEngine {
   private onPause: () => void;
   private onWin: () => void;
 
-  constructor(container: HTMLElement, username: string, onPause: () => void, onWin: () => void) {
+  constructor(
+      container: HTMLElement, 
+      userId: string,
+      username: string, 
+      onPause: () => void, 
+      onWin: () => void,
+      onPositionUpdate: (pos: {x: number, y: number, z: number}, rot: number) => void
+  ) {
     this.container = container;
-    this.username = username; // Init username
+    this.userId = userId;
+    this.username = username;
     this.onPause = onPause;
     this.onWin = onWin;
+    this.onPositionUpdate = onPositionUpdate;
 
     // Init Audio Context
     try {
@@ -113,6 +128,122 @@ export class ThreeEngine {
       this.materials.skin.color.set(appearance.skin);
       this.materials.shirt.color.set(appearance.shirt);
       this.materials.pants.color.set(appearance.pants);
+  }
+
+  // --- Remote Player Sync ---
+  public updateRemotePlayers(players: Player[]) {
+      // 1. Identify which players are still on server
+      const serverPlayerIds = new Set<string>();
+
+      players.forEach(p => {
+          if (p.id === this.userId) return; // Skip self
+          if (!p.online) return; // Skip offline
+
+          serverPlayerIds.add(p.id);
+
+          // Get or Create
+          let remoteGroup = this.remotePlayers.get(p.id);
+          if (!remoteGroup) {
+              remoteGroup = this.createRemoteAvatar(p.username, p.appearance);
+              this.scene.add(remoteGroup);
+              this.remotePlayers.set(p.id, remoteGroup);
+              
+              // Set initial pos
+              if (p.position) {
+                  remoteGroup.position.set(p.position.x, p.position.y, p.position.z);
+              }
+              if (p.rotation !== undefined) {
+                  remoteGroup.rotation.y = p.rotation;
+              }
+          } else {
+              // Interpolate Position (Simple LERP for smoothness)
+              if (p.position) {
+                  // We store target data in userData for the update loop to interpolate
+                  remoteGroup.userData.targetPos = new THREE.Vector3(p.position.x, p.position.y, p.position.z);
+                  remoteGroup.userData.targetRot = p.rotation || 0;
+                  
+                  // Also detect if walking for animation
+                  const dist = new THREE.Vector3(p.position.x, 0, p.position.z).distanceTo(
+                      new THREE.Vector3(remoteGroup.position.x, 0, remoteGroup.position.z)
+                  );
+                  remoteGroup.userData.isMoving = dist > 0.05;
+              }
+          }
+      });
+
+      // 2. Remove players who left
+      for (const [id, group] of this.remotePlayers) {
+          if (!serverPlayerIds.has(id)) {
+              this.scene.remove(group);
+              // Dispose geometries/materials if needed (simplified here)
+              this.remotePlayers.delete(id);
+          }
+      }
+  }
+
+  // --- Helper to build Avatar (Used for Local and Remote) ---
+  private createAvatarMesh(appearance: PlayerAppearance, name: string): { group: THREE.Group, animParts: any } {
+      const group = new THREE.Group();
+      const parts: any = {};
+
+      const matSkin = new THREE.MeshLambertMaterial({ color: appearance.skin });
+      const matShirt = new THREE.MeshLambertMaterial({ color: appearance.shirt });
+      const matPants = new THREE.MeshLambertMaterial({ color: appearance.pants });
+
+      const createPart = (w: number, h: number, d: number, mat: THREE.Material, y: number, partName: string) => {
+          const geo = new THREE.BoxGeometry(w, h, d);
+          const mesh = new THREE.Mesh(geo, mat);
+          mesh.castShadow = true;
+          mesh.receiveShadow = true;
+          
+          const partGroup = new THREE.Group();
+          partGroup.position.y = y;
+          mesh.position.y = -h / 2;
+          
+          partGroup.add(mesh);
+          parts[partName] = partGroup;
+          return partGroup;
+      };
+
+      // Torso
+      const torso = new THREE.Group();
+      torso.position.y = 1;
+      const torsoMesh = new THREE.Mesh(new THREE.BoxGeometry(2, 2, 1), matShirt);
+      torsoMesh.castShadow = true; torsoMesh.receiveShadow = true;
+      torso.add(torsoMesh);
+      group.add(torso);
+      parts.torso = torso;
+
+      // Head
+      const head = new THREE.Group();
+      head.position.y = 2.6;
+      const headMesh = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.2, 1.2), matSkin);
+      headMesh.castShadow = true; headMesh.receiveShadow = true;
+      head.add(headMesh);
+      group.add(head);
+      parts.head = head;
+
+      // Name Tag
+      const nameTag = this.createNameTag(name);
+      group.add(nameTag);
+
+      // Limbs
+      const armL = createPart(1, 2, 1, matSkin, 2, 'armL'); armL.position.x = -1.5;
+      const armR = createPart(1, 2, 1, matSkin, 2, 'armR'); armR.position.x = 1.5;
+      const legL = createPart(1, 2, 1, matPants, 0, 'legL'); legL.position.x = -0.5;
+      const legR = createPart(1, 2, 1, matPants, 0, 'legR'); legR.position.x = 0.5;
+
+      group.add(armL, armR, legL, legR);
+      
+      return { group, animParts: { ...parts, armL, armR, legL, legR } };
+  }
+
+  private createRemoteAvatar(name: string, appearance: PlayerAppearance): THREE.Group {
+      const { group, animParts } = this.createAvatarMesh(appearance, name);
+      // Store anim parts in userData for animation loop
+      group.userData.animParts = animParts;
+      group.userData.walkTimer = 0;
+      return group;
   }
 
   // --- Sound Generation ---
@@ -216,32 +347,10 @@ export class ThreeEngine {
   private createPlayer() {
     this.playerGroup = new THREE.Group();
 
-    // Use shared dynamic materials
-    const skin = this.materials.skin;
-    const shirt = this.materials.shirt;
-    const pants = this.materials.pants;
-
-    // Helper to create body parts
-    const createPart = (w: number, h: number, d: number, mat: THREE.Material, y: number, name: string) => {
-      const geo = new THREE.BoxGeometry(w, h, d);
-      const mesh = new THREE.Mesh(geo, mat);
-      mesh.castShadow = true;
-      mesh.receiveShadow = true;
-      
-      const group = new THREE.Group();
-      // Pivot point logic
-      group.position.y = y;
-      mesh.position.y = -h / 2;
-      
-      group.add(mesh);
-      this.parts[name] = group;
-      return group;
-    };
-
     // -- Torso --
     this.torsoGroup = new THREE.Group();
     this.torsoGroup.position.y = 1;
-    const torsoMesh = new THREE.Mesh(new THREE.BoxGeometry(2, 2, 1), shirt);
+    const torsoMesh = new THREE.Mesh(new THREE.BoxGeometry(2, 2, 1), this.materials.shirt);
     torsoMesh.castShadow = true;
     torsoMesh.receiveShadow = true;
     this.torsoGroup.add(torsoMesh);
@@ -250,7 +359,7 @@ export class ThreeEngine {
     // -- Head --
     this.headGroup = new THREE.Group();
     this.headGroup.position.y = 2.6;
-    const headMesh = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.2, 1.2), skin);
+    const headMesh = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.2, 1.2), this.materials.skin);
     headMesh.castShadow = true;
     headMesh.receiveShadow = true;
     this.headGroup.add(headMesh);
@@ -260,11 +369,24 @@ export class ThreeEngine {
     const nameTag = this.createNameTag(this.username);
     this.playerGroup.add(nameTag);
 
-    // -- Limbs --
-    const armL = createPart(1, 2, 1, skin, 2, 'armL'); armL.position.x = -1.5;
-    const armR = createPart(1, 2, 1, skin, 2, 'armR'); armR.position.x = 1.5;
-    const legL = createPart(1, 2, 1, pants, 0, 'legL'); legL.position.x = -0.5;
-    const legR = createPart(1, 2, 1, pants, 0, 'legR'); legR.position.x = 0.5;
+    // -- Limbs Helper --
+    const createPart = (w: number, h: number, d: number, mat: THREE.Material, y: number, name: string) => {
+      const geo = new THREE.BoxGeometry(w, h, d);
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      const group = new THREE.Group();
+      group.position.y = y;
+      mesh.position.y = -h / 2;
+      group.add(mesh);
+      this.parts[name] = group;
+      return group;
+    };
+
+    const armL = createPart(1, 2, 1, this.materials.skin, 2, 'armL'); armL.position.x = -1.5;
+    const armR = createPart(1, 2, 1, this.materials.skin, 2, 'armR'); armR.position.x = 1.5;
+    const legL = createPart(1, 2, 1, this.materials.pants, 0, 'legL'); legL.position.x = -0.5;
+    const legR = createPart(1, 2, 1, this.materials.pants, 0, 'legR'); legR.position.x = 0.5;
 
     this.playerGroup.add(armL, armR, legL, legR);
     this.scene.add(this.playerGroup);
@@ -464,6 +586,42 @@ export class ThreeEngine {
   }
 
   private update() {
+    // 0. Update Multiplayer Stats
+    const now = Date.now();
+    if (now - this.lastPositionEmitTime > 100) { // Throttle updates to 100ms
+        this.onPositionUpdate(this.playerGroup.position, this.playerGroup.rotation.y);
+        this.lastPositionEmitTime = now;
+    }
+
+    // 0.5 Update Remote Players (Interpolation + Animation)
+    this.remotePlayers.forEach((group) => {
+        const data = group.userData;
+        if (data.targetPos) {
+            group.position.lerp(data.targetPos, 0.1); // Smooth move
+        }
+        if (data.targetRot !== undefined) {
+             // Basic rotation lerp
+             group.rotation.y += (data.targetRot - group.rotation.y) * 0.1;
+        }
+
+        // Animate Remote Player
+        const animParts = data.animParts;
+        if (data.isMoving) {
+            data.walkTimer += 0.2;
+            const swing = 1.0;
+            animParts.legL.rotation.x = Math.sin(data.walkTimer) * swing;
+            animParts.legR.rotation.x = Math.sin(data.walkTimer + Math.PI) * swing;
+            animParts.armL.rotation.x = Math.sin(data.walkTimer + Math.PI) * swing;
+            animParts.armR.rotation.x = Math.sin(data.walkTimer) * swing;
+        } else {
+            // Idle
+            animParts.legL.rotation.x = 0;
+            animParts.legR.rotation.x = 0;
+            animParts.armL.rotation.x = 0;
+            animParts.armR.rotation.x = 0;
+        }
+    });
+
     // 1. Physics
     const prevPos = this.playerGroup.position.clone();
     
