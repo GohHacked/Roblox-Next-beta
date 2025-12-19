@@ -77,7 +77,7 @@ export const GameOverlay: React.FC<GameOverlayProps> = ({
   if (!paused) {
     return (
       <div className="absolute inset-0 pointer-events-none">
-        {/* Chat System (Left) - Z-Index 50 to be strictly above MobileControls (z-40) */}
+        {/* Chat System (Left) - Adjusted position in ChatSystem component to accommodate Menu Button */}
         <ChatSystem 
             username={username}
             messages={messages}
@@ -86,39 +86,27 @@ export const GameOverlay: React.FC<GameOverlayProps> = ({
             onBlur={onChatBlur}
         />
 
-        {/* HUD: Roblox-style Menu Button */}
+        {/* HUD: Unified Menu Button (Top Left) */}
         <div 
-          className="absolute top-4 right-48 pointer-events-auto cursor-pointer z-50 transform hover:scale-105 transition-transform opacity-70 hover:opacity-100 hidden md:block"
+          className="absolute top-4 left-4 pointer-events-auto cursor-pointer z-[60] transform hover:scale-105 transition-transform"
           onClick={onOpenMenu}
         >
           {/* Roblox Logo Shape */}
-          <div className="w-10 h-10 bg-[#2b2b2b]/80 backdrop-blur-sm rounded-lg border border-white/20 flex items-center justify-center shadow-lg">
-             <div className="w-5 h-5 bg-white rounded-[4px] transform rotate-[12deg] border-[2.5px] border-white flex items-center justify-center">
-                 <div className="w-2 h-2 bg-[#2b2b2b] rounded-[1px]"></div>
+          <div className="w-9 h-9 md:w-10 md:h-10 bg-[#232527]/90 backdrop-blur-md rounded-lg border border-white/20 flex items-center justify-center shadow-lg active:scale-95 transition-all">
+             <div className="w-4 h-4 md:w-5 md:h-5 bg-white rounded-[2px] md:rounded-[4px] transform rotate-[12deg] border-[2px] md:border-[2.5px] border-white flex items-center justify-center">
+                 <div className="w-1.5 h-1.5 md:w-2 md:h-2 bg-[#232527] rounded-[0.5px] md:rounded-[1px]"></div>
              </div>
           </div>
         </div>
-        
-        {/* Mobile Menu Button (Top Right corner fallback if screen small) - Increased Z-Index to 50 */}
-        <div 
-          className="absolute top-4 right-4 pointer-events-auto cursor-pointer z-50 md:hidden"
-          onClick={onOpenMenu}
-        >
-             <div className="w-8 h-8 bg-[#2b2b2b]/80 rounded-md border border-white/20 flex items-center justify-center active:scale-90 transition-transform">
-                <div className="w-4 h-4 bg-white rounded-[2px] transform rotate-[12deg] border-[2px] border-white flex items-center justify-center">
-                    <div className="w-1.5 h-1.5 bg-[#2b2b2b] rounded-[1px]"></div>
-                </div>
-             </div>
-        </div>
 
-        {/* Leaderboard - Z-Index 45 */}
-        <div className="absolute top-4 right-4 w-40 bg-black/40 text-white rounded-lg p-3 text-xs backdrop-blur-sm hidden md:block z-45 pointer-events-auto">
+        {/* Leaderboard - Top Right */}
+        <div className="absolute top-4 right-4 w-32 md:w-40 bg-black/40 text-white rounded-lg p-2 md:p-3 text-[10px] md:text-xs backdrop-blur-sm z-45 pointer-events-auto">
           <div className="font-bold border-b border-white/20 pb-1 mb-1">Leaderboard</div>
           <div className="space-y-1">
              {/* Show top 3 players in HUD */}
              {players.slice(0, 3).map(p => (
                 <div key={p.id} className="flex justify-between py-0.5">
-                    <span className={`truncate w-24 ${p.isLocal ? 'text-yellow-400 font-bold' : 'text-white'}`}>{p.username}</span>
+                    <span className={`truncate w-20 md:w-24 ${p.isLocal ? 'text-yellow-400 font-bold' : 'text-white'}`}>{p.username}</span>
                     <span className="font-mono text-gray-300">{p.level}</span>
                 </div>
              ))}

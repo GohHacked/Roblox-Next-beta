@@ -49,20 +49,21 @@ export const ChatSystem: React.FC<ChatSystemProps> = ({ messages, onSendMessage,
   };
 
   return (
-    <div className="absolute top-4 left-4 z-50 flex flex-col items-start font-sans pointer-events-auto">
+    // Moved to left-16 (approx 64px) to clear the menu button at left-4 (16px) + width ~40px
+    <div className="absolute top-4 left-[60px] md:left-16 z-50 flex flex-col items-start font-sans pointer-events-auto">
       {/* Toggle Button */}
       <button 
         onClick={toggleChat}
-        className="relative bg-black/60 hover:bg-black/80 p-2.5 rounded-lg mb-2 text-white transition-colors backdrop-blur-sm border border-white/20 shadow-md active:scale-90 group"
+        className="relative bg-[#232527]/90 hover:bg-[#393b3d] w-9 h-9 md:w-10 md:h-10 flex items-center justify-center rounded-lg mb-2 text-white transition-colors backdrop-blur-md border border-white/20 shadow-lg active:scale-90 group"
         aria-label="Toggle Chat"
       >
-        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
         </svg>
 
         {/* Notification Badge */}
         {unreadCount > 0 && (
-            <div className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[20px] h-[20px] flex items-center justify-center border border-black/30 shadow-sm animate-pulse">
+            <div className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] h-[18px] flex items-center justify-center border border-black/30 shadow-sm animate-pulse">
                 {unreadCount > 99 ? '99+' : unreadCount}
             </div>
         )}
@@ -70,21 +71,23 @@ export const ChatSystem: React.FC<ChatSystemProps> = ({ messages, onSendMessage,
 
       {/* Chat Window */}
       {isOpen && (
-        <div className="w-[300px] h-[200px] flex flex-col rounded-xl overflow-hidden animate-fade-in shadow-xl border border-white/5">
+        // Adjusted width for mobile to prevent overflow
+        <div className="w-[260px] md:w-[320px] h-[180px] md:h-[220px] flex flex-col rounded-xl overflow-hidden animate-fade-in shadow-2xl border border-white/10 bg-[#111213]/80 backdrop-blur-md origin-top-left">
            {/* Messages Area */}
-           <div className="flex-1 bg-black/50 backdrop-blur-sm overflow-y-auto p-3 scrollbar-thin scrollbar-thumb-white/20">
+           <div className="flex-1 overflow-y-auto p-3 scrollbar-thin scrollbar-thumb-white/20 scrollbar-track-transparent">
+               {/* Messages content */}
                {messages.length === 0 && (
-                   <div className="text-gray-400 text-xs italic">System: Welcome to the chat!</div>
+                   <div className="text-gray-400 text-xs italic opacity-70">System: Welcome to the chat!</div>
                )}
                {messages.map((msg) => (
-                   <div key={msg.id} className="mb-1.5 text-[13px] leading-tight break-words text-shadow-sm font-medium">
+                   <div key={msg.id} className="mb-1 text-[13px] leading-snug break-words">
                        {msg.isSystem ? (
-                           <span className="text-yellow-400 italic">{msg.text}</span>
+                           <span className="text-yellow-400 italic text-xs">{msg.text}</span>
                        ) : (
-                           <>
-                               <span className="font-bold text-white drop-shadow-sm">[{msg.username}]: </span>
-                               <span className="text-white drop-shadow-sm">{msg.text}</span>
-                           </>
+                           <div className="flex gap-1">
+                               <span className="font-bold text-white whitespace-nowrap">[{msg.username}]:</span>
+                               <span className="text-gray-100">{msg.text}</span>
+                           </div>
                        )}
                    </div>
                ))}
@@ -92,15 +95,15 @@ export const ChatSystem: React.FC<ChatSystemProps> = ({ messages, onSendMessage,
            </div>
 
            {/* Input Area */}
-           <form onSubmit={handleSubmit} className="bg-black/70 p-2 flex border-t border-white/10">
+           <form onSubmit={handleSubmit} className="bg-black/40 p-2 flex border-t border-white/10">
                <input 
                   type="text" 
                   value={inputText}
                   onChange={(e) => setInputText(e.target.value)}
                   onFocus={onFocus}
                   onBlur={onBlur}
-                  placeholder="Tap here to chat"
-                  className="w-full bg-white/10 text-white text-sm px-3 py-1.5 rounded-md outline-none placeholder-gray-400 focus:bg-white/20 transition-colors border border-transparent focus:border-white/30"
+                  placeholder="Tap here to chat..."
+                  className="w-full bg-white/10 text-white text-xs md:text-sm px-3 py-2 rounded-md outline-none placeholder-gray-400 focus:bg-white/15 transition-colors border border-transparent focus:border-white/20"
                   maxLength={100}
                />
            </form>
