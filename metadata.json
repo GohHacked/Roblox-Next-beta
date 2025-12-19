@@ -1,0 +1,5 @@
+{
+  "name": "Roblox Next",
+  "description": "A 3D platformer game clone featuring multiple levels like Rainbow Obby and Glass Bridge, built with Three.js and React.",
+  "requestFramePermissions": []
+}
