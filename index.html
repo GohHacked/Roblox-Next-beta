@@ -2,20 +2,34 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <title>Roblox Next</title>
     <!-- We keep Tailwind CDN for simplicity, though normally it would be in package.json/postcss -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
-      body {
-        font-family: 'Segoe UI', sans-serif;
+      html, body {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%; /* Fallback */
+        height: 100dvh; /* Dynamic Viewport Height for Mobile */
+        overflow: hidden; /* Prevent scrolling */
         background-color: #191b1d;
+        font-family: 'Segoe UI', sans-serif;
         color: #ffffff;
-        overflow: hidden;
         user-select: none;
-        touch-action: none; /* Critical for mobile game controls */
         -webkit-user-select: none;
+        touch-action: none;
+        overscroll-behavior: none;
+      }
+      #root {
+        width: 100%;
+        height: 100%;
+        position: absolute;
+        top: 0;
+        left: 0;
+        overflow: hidden;
       }
       /* Custom scrollbar for discovery page */
       ::-webkit-scrollbar {

@@ -340,7 +340,8 @@ function App() {
   }
 
   return (
-    <div className="w-full h-screen overflow-hidden bg-black text-white font-sans">
+    // Changed to fixed inset-0 to force full viewport height regardless of address bar
+    <div className="fixed inset-0 w-full h-full overflow-hidden bg-black text-white font-sans touch-none select-none">
       {gameState === 'LOGIN' && (
         <LoginScreen onLogin={handleLogin} lang={language} />
       )}
